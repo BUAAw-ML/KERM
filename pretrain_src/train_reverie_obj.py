@@ -123,7 +123,8 @@ def main(opts):
             del tmp
         elif opts.init_pretrained == 'lxmert':
             tmp = torch.load(
-                '../datasets/pretrained/LXMERT/model_LXRT.pth', 
+                # '../datasets/pretrained/LXMERT/model_LXRT.pth', 
+                '../datasets/pretrained/model_LXRT.pth', 
                 map_location=lambda storage, loc: storage
             )
             for param_name, param in tmp.items():
