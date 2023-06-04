@@ -39,6 +39,7 @@ class ReverieTextPathData(object):
         self.obj_ft_file = obj_ft_file
         self.crop_db = FeaturesDB("../datasets/kerm_data/clip_crop_image.hdf5")
         self.knowledge_db = FeaturesDB("../datasets/kerm_data/vg.hdf5")
+
         self.viewpoint_knowledge = json.load(open('../datasets/kerm_data/knowledge.json','r'))
 
         self.image_feat_size = image_feat_size
@@ -141,12 +142,14 @@ class ReverieTextPathData(object):
         return_obj_label=False, end_vp=None
     ):
         item = self.data[idx]
+
         scan = item['scan']
         start_vp = item['path'][0]
         start_heading = item.get('heading', 0)
         pos_vps = item['pos_vps']
         gt_path = item['path']
 
+        print(pos_vps)
         if end_vp is None:
             if end_vp_type == 'pos':
                 end_vp = pos_vps[np.random.randint(len(pos_vps))]
@@ -161,6 +164,7 @@ class ReverieTextPathData(object):
                 end_vp = end_vps[np.random.randint(len(end_vps))]
 
         gt_path = self.shortest_paths[scan][start_vp][end_vp]
+
         cur_heading, cur_elevation = self.get_cur_angle(scan, gt_path, start_heading)
 
         if len(gt_path) > TRAIN_MAX_STEP:
@@ -241,6 +245,7 @@ class ReverieTextPathData(object):
         knowledge_fts, crop_fts = [],[]
         used_cand_ids = []
         for vp in path:
+            
             view_fts, obj_img_fts, obj_attrs = self.get_scanvp_feature(scan, vp)
 
             view_img_fts, view_angles, cand_vpids = [], [], []
@@ -298,19 +303,41 @@ class ReverieTextPathData(object):
             for i in range(36):
                 view_feature = []
                 for j in range(CROP_SIZE):
-                    knowledge_ids = self.viewpoint_knowledge[key+'_'+str(i)+'_'+str(j)][:5]
-
+                    crop_view_feature = []
+                    knowledge_ids = self.viewpoint_knowledge[key+'_'+str(i)+'_'+str(j)][:500]
+                    knowledge_num = 0
                     for k in knowledge_ids:
-                        crop_feature = self.knowledge_db.get_feature(str(k))
-                        view_feature.append(crop_feature.reshape(1,512))
+                        if knowledge_num < 5:
+                            try:
+                                crop_feature = self.knowledge_db.get_feature(str(k))
+                                crop_view_feature.append(crop_feature.reshape(1,512))
+                                knowledge_num += 1
+                            except Exception as e:
+                                print(f"Error while read knowledge_db file idx {k}")
+                        else:
+                            break
+                    while len(crop_view_feature) < 5:
+                        crop_view_feature.append(crop_view_feature[0])
+                    # print(len(crop_view_feature))
+                    view_feature.extend(crop_view_feature)
+
+                        
                 view_feature = np.concatenate(view_feature,axis=0)
+                
                 knowledge_feature.append(view_feature.reshape(1,CROP_SIZE*CROP_SIZE,512))
 
             knowledge_feature = np.concatenate(knowledge_feature,axis=0)
-            crop_feature = self.crop_db.get_feature(key).reshape(1,36,CROP_SIZE,512)
+
+            try:
+                crop_feature = self.crop_db.get_feature(key).reshape(1,36,CROP_SIZE,512)
+            except Exception as e:
+                print(f"Error while read crop_db file idx {k}")
+                crop_feature = crop_fts[-1]
 
             knowledge_fts.append(knowledge_feature.reshape(1,36,CROP_SIZE*CROP_SIZE,512))
             crop_fts.append(crop_feature)
+
+            
 
         knowledge_fts = torch.tensor(np.concatenate(knowledge_fts,axis=0))
         crop_fts = torch.tensor(np.concatenate(crop_fts,axis=0))

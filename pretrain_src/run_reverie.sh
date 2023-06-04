@@ -12,4 +12,4 @@ outdir=../datasets/REVERIE/exprs_map/pretrain/cmt-vitbase-mlm.mrc.sap.og-init.lx
 #     --output_dir $outdir
 
 
-CUDA_VISIBLE_DEVICES='0' python3  train_reverie_obj.py  --vlnbert cmt --model_config config/reverie_obj_model_config.json --config config/reverie_obj_pretrain.json   --output_dir $outdir
+CUDA_VISIBLE_DEVICES='3' python3  train_reverie_obj.py  --vlnbert cmt --model_config config/reverie_obj_model_config.json --config config/reverie_obj_pretrain.json   --output_dir $outdir
